@@ -7,14 +7,9 @@ import socket
 import json
 import time
 import os
-
-import re
-import sys
-import importlib.metadata
-from packaging import version as pkg_version
-from packaging.specifiers import SpecifierSet
-
 import dependency_installer
+from utils import run_command, wait_for_port, kill_port
+
 
 COMFYUI_GITHUB_URL = "https://github.com/comfyanonymous/ComfyUI"
 
@@ -122,20 +117,20 @@ class ComfyUI:
     # Private Helpers
     # -----------------------------------------------------------------------
 
-    def _run_command(self, command: list, cwd: Union[Path, str, None] = None) -> None:
-        """Runs a shell command and raises on failure."""
-        result = subprocess.run(
-            command, 
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=True
-        )
+    # def run_command(self, command: list, cwd: Union[Path, str, None] = None) -> None:
+    #     """Runs a shell command and raises on failure."""
+    #     result = subprocess.run(
+    #         command, 
+    #         cwd=cwd,
+    #         stdout=subprocess.PIPE,
+    #         stderr=subprocess.STDOUT,
+    #         check=True
+    #     )
         
-        if result.returncode != 0:
-            raise subprocess.CalledProcessError(
-                result.returncode, command, output=result.stdout
-            )
+    #     if result.returncode != 0:
+    #         raise subprocess.CalledProcessError(
+    #             result.returncode, command, output=result.stdout
+    #         )
 
 
     def _clone(
@@ -159,7 +154,7 @@ class ComfyUI:
                 print(f"Removed  :  {repo_name}")
     
             if not (target_path/".git").exists():
-                self._run_command(["git", "clone", git_url, str(target_path)])
+                run_command(["git", "clone", git_url, str(target_path)])
                 print(f"{repo_name} ✅")
             else:
                 print(f"{repo_name} Already Present.")
@@ -175,31 +170,31 @@ class ComfyUI:
             raise
 
 
-    def _wait_for_port(
-        self,
-        port: int,
-        host: str = "127.0.0.1",
-        timeout: int = SERVER_TIMEOUT
-    ) -> bool:
-        """
-        Polls a TCP port until it becomes available or the timeout expires.
-        """
-        start_time = time.time()
+    # def wait_for_port(
+    #     self,
+    #     port: int,
+    #     host: str = "127.0.0.1",
+    #     timeout: int = SERVER_TIMEOUT
+    # ) -> bool:
+    #     """
+    #     Polls a TCP port until it becomes available or the timeout expires.
+    #     """
+    #     start_time = time.time()
 
-        while True:
-            if self.comfy_process and self.comfy_process.poll() is not None:
-                print(f"ComfyUI process exited early (code {self.comfy_process.returncode}) before server started.")
-                return False
+    #     while True:
+    #         if self.comfy_process and self.comfy_process.poll() is not None:
+    #             print(f"ComfyUI process exited early (code {self.comfy_process.returncode}) before server started.")
+    #             return False
             
-            try:
-                with socket.create_connection((host, port), timeout=1):
-                    print(f"Port {port} is active  :  server is running.")
-                    return True
-            except (ConnectionRefusedError, socket.timeout, OSError):
-                if time.time() - start_time > timeout:
-                    print(f"Timeout  :  ComfyUI did not start within {timeout}s.")
-                    return False
-                time.sleep(1)
+    #         try:
+    #             with socket.create_connection((host, port), timeout=1):
+    #                 print(f"Port {port} is active  :  server is running.")
+    #                 return True
+    #         except (ConnectionRefusedError, socket.timeout, OSError):
+    #             if time.time() - start_time > timeout:
+    #                 print(f"Timeout  :  ComfyUI did not start within {timeout}s.")
+    #                 return False
+    #             time.sleep(1)
 
     def _configure_extra_model_paths(self) -> None:
         """
@@ -231,16 +226,16 @@ class ComfyUI:
             print(f"Failed to write user settings : {e}")
             
 
-    def _kill_port(self, port: int, host: str = "127.0.0.1") -> None:
-        """
-        Checks if the given port is busy, and force-kills whatever is using it.
-        """
-        try:
-            with socket.create_connection((host, port), timeout=1):
-                os.system(f"fuser -k {port}/tcp > /dev/null 2>&1")
-                time.sleep(2)
-        except (ConnectionRefusedError, socket.timeout, OSError):
-            pass
+    # def kill_port(self, port: int, host: str = "127.0.0.1") -> None:
+    #     """
+    #     Checks if the given port is busy, and force-kills whatever is using it.
+    #     """
+    #     try:
+    #         with socket.create_connection((host, port), timeout=1):
+    #             os.system(f"fuser -k {port}/tcp > /dev/null 2>&1")
+    #             time.sleep(2)
+    #     except (ConnectionRefusedError, socket.timeout, OSError):
+    #         pass
 
 
     def _build_subprocess_env(self) -> dict:
@@ -309,7 +304,7 @@ class ComfyUI:
         port = self.DEFAULT_PORT
         host = self.DEFAULT_HOST
 
-        self._kill_port(port)
+        kill_port(port)
 
         print(f"Starting ComfyUI  :  {host}:{port}")
 
@@ -331,7 +326,7 @@ class ComfyUI:
                 env = self._build_subprocess_env()
             )
 
-            if self._wait_for_port(port):
+            if wait_for_port(port, timeout=self.SERVER_TIMEOUT, process=self.comfy_process):
                 # print(f"ComfyUI running  :  PID {self.comfy_process.pid}")
                 # print("\n")
                 return self.comfy_process

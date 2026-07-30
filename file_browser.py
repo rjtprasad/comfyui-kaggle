@@ -6,6 +6,7 @@ import stat
 import tarfile
 from pathlib import Path
 from typing import Union
+from utils import run_command, wait_for_port, kill_port
 
 
 class FileBrowser:
@@ -25,22 +26,22 @@ class FileBrowser:
     # Private Helpers
     # -----------------------------------------------------------------------
 
-    def _run_command(self, command: list) -> None:
-        """Run a filebrowser CLI command."""
-        subprocess.run(command, check=True, capture_output=True, text=True)
-        time.sleep(1)
+    # def _run_command(self, command: list) -> None:
+    #     """Run a filebrowser CLI command."""
+    #     subprocess.run(command, check=True, capture_output=True, text=True)
+    #     time.sleep(1)
 
-    def _wait_for_port(self, port: int, host: str = "127.0.0.1", timeout: int = SERVER_TIMEOUT) -> bool:
-        """Wait until a port accepts connections or timeout elapses."""
-        start_time = time.time()
-        while True:
-            try:
-                with socket.create_connection((host, port), timeout=1):
-                    return True
-            except (ConnectionRefusedError, socket.timeout):
-                if time.time() - start_time > timeout:
-                    return False
-                time.sleep(1)
+    # def _wait_for_port(self, port: int, host: str = "127.0.0.1", timeout: int = SERVER_TIMEOUT) -> bool:
+    #     """Wait until a port accepts connections or timeout elapses."""
+    #     start_time = time.time()
+    #     while True:
+    #         try:
+    #             with socket.create_connection((host, port), timeout=1):
+    #                 return True
+    #         except (ConnectionRefusedError, socket.timeout):
+    #             if time.time() - start_time > timeout:
+    #                 return False
+    #             time.sleep(1)
 
     def _download_filebrowser(self) -> None:
         """Download and make the filebrowser binary executable."""
@@ -66,14 +67,14 @@ class FileBrowser:
         db_path = self.base_dir / "filebrowser.db"
 
         if not db_path.exists():
-            self._run_command([str(self.filebrowser_bin), "-d", str(db_path), "config", "init"])
+            self.run_command([str(self.filebrowser_bin), "-d", str(db_path), "config", "init"])
 
-            self._run_command(
+            self.run_command(
             [str(self.filebrowser_bin), "-d", str(db_path), "users", "add",
              "admin", "admin12345678", "--perm.admin"]
             )
 
-        self._run_command(
+        self.run_command(
             [str(self.filebrowser_bin), "-d", str(db_path), "config", "set",
              "--auth.method=noauth",
              "--address=0.0.0.0",
@@ -95,8 +96,7 @@ class FileBrowser:
 
         # Ensure no leftover filebrowser process is still holding a lock on the db
         os.system("pkill -f filebrowser > /dev/null 2>&1")
-        os.system(f"fuser -k {port}/tcp > /dev/null 2>&1")
-        time.sleep(2)
+        kill_port(port)
 
         self._configure_filebrowser(port)
 
@@ -105,17 +105,15 @@ class FileBrowser:
             "-d", str(self.base_dir / "filebrowser.db"),
         ]
 
-        log_path = self.base_dir / "filebrowser.log"
-        log_handle = open(log_path, "w", encoding="utf-8")
 
         self.filebrowser_process = subprocess.Popen(
             command,
             cwd=self.base_dir,
-            stdout=log_handle,
+            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
 
-        if self._wait_for_port(port):
+        if wait_for_port(port, timeout=self.SERVER_TIMEOUT, process=self.filebrowser_process):
             print(f"\nFile Explorer running on port {port}\n")
             return self.filebrowser_process
 
