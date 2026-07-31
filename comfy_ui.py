@@ -35,30 +35,30 @@ UI_SETTINGS = {
         }
 
 
-EXTRA_MODEL_PATHS_CONFIG = """
-comfyui:
-    base_path: /kaggle/input/models/rjprasad
-    is_default: false
-    checkpoints: checkpoints/other
-    background_removal: background_removal/other
-    text_encoders: |
-         text_encoders/other
-         clip/other 
-    clip_vision: clip_vision/other
-    configs: configs/other
-    controlnet: controlnet/other
-    diffusion_models: |
-                 diffusion_models/other
-                 unet/other
-    embeddings: embeddings/other
-    loras: loras/other
-    upscale_models: upscale_models/other
-    vae: vae/other
-    ipadapter : ipadapter/other
-    audio_encoders: audio_encoders/other
-    model_patches: model_patches/other
-    seedvr2: SEEDVR2/other
-"""
+# EXTRA_MODEL_PATHS_CONFIG = """
+# comfyui:
+#     base_path: /kaggle/input/models/rjprasad
+#     is_default: false
+#     checkpoints: checkpoints/other
+#     background_removal: background_removal/other
+#     text_encoders: |
+#          text_encoders/other
+#          clip/other 
+#     clip_vision: clip_vision/other
+#     configs: configs/other
+#     controlnet: controlnet/other
+#     diffusion_models: |
+#                  diffusion_models/other
+#                  unet/other
+#     embeddings: embeddings/other
+#     loras: loras/other
+#     upscale_models: upscale_models/other
+#     vae: vae/other
+#     ipadapter : ipadapter/other
+#     audio_encoders: audio_encoders/other
+#     model_patches: model_patches/other
+#     seedvr2: SEEDVR2/other
+# """
 
 
 # ---------------------------------------------------------------------------
@@ -155,16 +155,33 @@ class ComfyUI:
             raise
 
 
+    # def _configure_extra_model_paths(self) -> None:
+    #     """
+    #     Sets up the extra_model_paths.yaml config inside the ComfyUI root directory.
+    #     """
+    #     extra_model_paths_yaml = self.paths.ComfyUI/"extra_model_paths.yaml"
+
+    #     try:
+    #         extra_model_paths_yaml.parent.mkdir(parents=True, exist_ok=True)
+    #         extra_model_paths_yaml.write_text(EXTRA_MODEL_PATHS_CONFIG.strip(), encoding="utf-8")
+    #         print(f"Configured extra model paths. ✅")
+    #     except Exception as e:
+    #         print(f"Failed to write extra model paths configuration  :  {e}")
+    
+
     def _configure_extra_model_paths(self) -> None:
         """
-        Sets up the extra_model_paths.yaml config inside the ComfyUI root directory.
+        Copies the extra_model_paths.yaml template into the ComfyUI root directory.
         """
-        extra_model_paths_yaml = self.paths.ComfyUI/"extra_model_paths.yaml"
+        template = Path(__file__).parent / "extra_model_paths_template.yaml"
+        destination  = self.paths.ComfyUI / "extra_model_paths.yaml"
 
         try:
-            extra_model_paths_yaml.parent.mkdir(parents=True, exist_ok=True)
-            extra_model_paths_yaml.write_text(EXTRA_MODEL_PATHS_CONFIG.strip(), encoding="utf-8")
-            print(f"Configured extra model paths. ✅")
+            if not template.exists():
+                print(f"Template not found  :  {template}")
+                return
+            shutil.copyfile(template, destination)
+            print("Configured extra model paths. ✅")
         except Exception as e:
             print(f"Failed to write extra model paths configuration  :  {e}")
 

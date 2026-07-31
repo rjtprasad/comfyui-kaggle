@@ -1,0 +1,22 @@
+comfyui:
+    base_path: /kaggle/input/models/rjprasad
+    is_default: false
+    checkpoints: checkpoints/other
+    background_removal: background_removal/other
+    text_encoders: |
+         text_encoders/other
+         clip/other
+    clip_vision: clip_vision/other
+    configs: configs/other
+    controlnet: controlnet/other
+    diffusion_models: |
+                 diffusion_models/other
+                 unet/other
+    embeddings: embeddings/other
+    loras: loras/other
+    upscale_models: upscale_models/other
+    vae: vae/other
+    ipadapter: ipadapter/other
+    audio_encoders: audio_encoders/other
+    model_patches: model_patches/other
+    seedvr2: SEEDVR2/other
